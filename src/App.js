@@ -22,14 +22,20 @@ class App extends Component {
     		"#525252"
     	],
     	activePalette: ["#ecfbe8", "#c5eebc", "#99de8e", "#6dce63", "#42be3c", "#1aad19", "#12981a", "#0c7f1c", "#06661c", "#024b19"],
-    	customPalette: ["#ecfbe8", "#c5eebc", "#99de8e", "#6dce63", "#42be3c", "#1aad19", "#12981a", "#0c7f1c", "#06661c", "#024b19"],
+    	customPalette: ["#f8fff6","#c8efbf","#98de8d","#6bce61","#41bd3a","#1aad19","#0f8f1b","#08701c","#03521a","#003314"],
     	activeMainColor: "#1AAD19",
     	customMainColor: "#1AAD19",
     	customMainColorInput: "1AAD19",
     	customPickerShow: false,
+        customPaddingLeft: 0.0,
+        customPaddingRight: 0,
+        customGammaLeft: 1,
+        customGammaRight: 1,
+        customHLeft: 107,
+        customHRight: 144,
     	datasets: [],
     	chart: null,
-    	sequenceNavIndex: 2
+    	sequenceNavIndex: 0
     }
 
     randomScalingFactor = () => Math.round(Math.random() * 100)
@@ -50,9 +56,10 @@ class App extends Component {
 				activePalette: this.generatePalette(activeMainColor),
 				customPalette: this.generatePalette(customMainColor)
 			}, () => {
-				const { activePalette } = this.state
+				const { activePalette, customPalette, sequenceNavIndex } = this.state
 				const datasets = []
-				activePalette.forEach(color => {
+                const palette = sequenceNavIndex === 0 ? activePalette : customPalette
+				palette.forEach(color => {
 					datasets.unshift({
 			            backgroundColor: color,
 			            hoverBackgroundColor: color,
@@ -77,10 +84,13 @@ class App extends Component {
 
     handleCustomPickerChange = customMainColor => {
     	const hex = customMainColor.hex
+        const palette = this.generatePalette(hex)
     	this.setState({
     		customMainColor: hex,
     		customMainColorInput: hex.substring(1),
-    		customPalette: this.generatePalette(hex)
+    		customPalette: palette,
+            customHLeft: Math.round(chroma(palette[0]).hsv()[0]),
+            customHRight: Math.round(chroma(palette[palette.length - 1]).hsv()[0])
     	}, this.updateChart)
     }
 
@@ -110,8 +120,56 @@ class App extends Component {
     	chart.update()
     }
 
-    generatePalette = mainColor => {
-    	const { sliderValue } = this.state
+    handleSliderCustomPaddingLeftChange = customPaddingLeft => {
+        this.setState({ customPaddingLeft }, () => {
+            this.setState({
+                customPalette: this.generatePalette(this.state.customMainColor)
+            }, this.updateChart)
+        })
+    }
+
+    handleSliderCustomPaddingRightChange = customPaddingRight => {
+        this.setState({ customPaddingRight }, () => {
+            this.setState({
+                customPalette: this.generatePalette(this.state.customMainColor)
+            }, this.updateChart)
+        })
+    }
+
+    handleSliderCustomGammaLeftChange = customGammaLeft => {
+        this.setState({ customGammaLeft }, () => {
+            this.setState({
+                customPalette: this.generatePalette(this.state.customMainColor)
+            }, this.updateChart)
+        })
+    }
+
+    handleSliderCustomGammaRightChange = customGammaRight => {
+        this.setState({ customGammaRight }, () => {
+            this.setState({
+                customPalette: this.generatePalette(this.state.customMainColor)
+            }, this.updateChart)
+        })
+    }
+
+    handleSliderCustomHLeftChange = customHLeft => {
+        this.setState({ customHLeft }, () => {
+            this.setState({
+                customPalette: this.generatePalette(this.state.customMainColor, {customH: true})
+            }, this.updateChart)
+        })
+    }
+
+    handleSliderCustomHRightChange = customHRight => {
+        this.setState({ customHRight }, () => {
+            this.setState({
+                customPalette: this.generatePalette(this.state.customMainColor, {customH: true})
+            }, this.updateChart)
+        })
+    }
+
+    generatePalette = (mainColor, options) => {
+    	const { sliderValue, sequenceNavIndex, customPaddingLeft, customPaddingRight, customGammaLeft, customGammaRight } = this.state
     	let firstS = 0.04
     	let firstV = 1
     	let lastS = 1.2
@@ -180,11 +238,11 @@ class App extends Component {
     	    _lastV = 0.1
     	}
 
-    	const h = mainH * _firstH
+    	const h = options && options.customH ? this.state.customHLeft : mainH * _firstH
     	const s = mainS * firstS
     	const v = firstV
 
-    	const H = mainH * _lastH
+    	const H = options && options.customH ? this.state.customHRight : mainH * _lastH
     	const S = mainS * 1.2 < 1 ? chromaColor.get("hsv.s") * lastS : 1
     	const V = _lastV
 
@@ -197,15 +255,15 @@ class App extends Component {
     	const left = chroma
     	    .scale([firstColor, mainColor])
     	    .mode("hsv")
-    	    .padding([_paddingLeft, 0])
-    	    .gamma(gammaLeft)
+    	    .padding([sequenceNavIndex === 0 ? _paddingLeft : customPaddingLeft, 0])
+    	    .gamma(sequenceNavIndex === 0 ? gammaLeft : customGammaLeft)
     	    .colors(leftNumber)
 
     	const right = chroma
     	    .scale([mainColor, lastColor])
     	    .mode("hsv")
-    	    .padding([0, _paddingRight])
-    	    .gamma(gammaRight)
+    	    .padding([0, sequenceNavIndex === 0 ? _paddingRight : customPaddingRight])
+            .gamma(sequenceNavIndex === 0 ? gammaRight : customGammaRight)
     	    .colors(rightNumber)
 
     	right.shift()
@@ -302,7 +360,13 @@ class App extends Component {
     		customPalette,
     		customMainColor,
     		customMainColorInput,
-    		customPickerShow
+    		customPickerShow,
+            customPaddingLeft,
+            customPaddingRight,
+            customGammaLeft,
+            customGammaRight,
+            customHLeft,
+            customHRight
     	} = this.state
 
         return <div className={styles.wrapper}>
@@ -440,23 +504,87 @@ class App extends Component {
         								<div className={styles.customValueWrapper}>
         									<div className={styles.customValue}>
         										<div className={styles.customValueTitle}>亮侧</div>
-        										<div className={styles.customValueContent}>
-        											<span>强度</span>
-        											<Slider
-        												className={styles.customValueSlider}
-        												min={3}
-        												max={16}
-        												onChange={sliderValue => this.handleSliderChange(sliderValue)}
-        												value={sliderValue}
-        											/>
-        											<input
-        												type="text"
-        												value={sliderValue}
-        												onChange={e => this.setState({sliderValue: e.target.value})}
-        											/>
-        										</div>
+        										<div>
+                                                    <div className={styles.customValueContent}>
+                                                        <span>强度</span>
+                                                        <Slider
+                                                            className={styles.customValueSlider}
+                                                            min={-0.5}
+                                                            max={0.5}
+                                                            step={0.01}
+                                                            onChange={customPaddingLeft => this.handleSliderCustomPaddingLeftChange(customPaddingLeft)}
+                                                            value={customPaddingLeft}
+                                                        />
+                                                        <span>{ customPaddingLeft }</span>
+                                                    </div>
+                                                    <div className={styles.customValueContent}>
+                                                        <span>中心</span>
+                                                        <Slider
+                                                            className={styles.customValueSlider}
+                                                            min={0}
+                                                            max={4}
+                                                            step={0.01}
+                                                            onChange={customGammaLeft => this.handleSliderCustomGammaLeftChange(customGammaLeft)}
+                                                            value={customGammaLeft}
+                                                        />
+                                                        <span>{ customGammaLeft }</span>
+                                                    </div>
+                                                    <div className={styles.customValueContent}>
+                                                        <span>色相</span>
+                                                        <Slider
+                                                            className={styles.customValueSlider}
+                                                            min={0}
+                                                            max={360}
+                                                            onChange={customHLeft => this.handleSliderCustomHLeftChange(customHLeft)}
+                                                            value={customHLeft}
+                                                        />
+                                                        <span>{ customHLeft }</span>
+                                                    </div>
+                                                </div>
         									</div>
         								</div>
+                                        <div className={styles.customValueWrapper}>
+                                            <div className={styles.customValue}>
+                                                <div className={styles.customValueTitle}>暗侧</div>
+                                                <div>
+                                                    <div className={styles.customValueContent}>
+                                                        <span>强度</span>
+                                                        <Slider
+                                                            className={styles.customValueSlider}
+                                                            min={-0.5}
+                                                            max={0.5}
+                                                            step={0.01}
+                                                            onChange={customPaddingRight => this.handleSliderCustomPaddingRightChange(customPaddingRight)}
+                                                            value={customPaddingRight}
+                                                        />
+                                                        <span>{ customPaddingRight }</span>
+                                                    </div>
+                                                    <div className={styles.customValueContent}>
+                                                        <span>中心</span>
+                                                        <Slider
+                                                            className={styles.customValueSlider}
+                                                            min={0}
+                                                            max={4}
+                                                            step={0.01}
+                                                            onChange={customGammaRight => this.handleSliderCustomGammaRightChange(customGammaRight)}
+                                                            value={customGammaRight}
+                                                        />
+                                                        <span>{ customGammaRight }</span>
+                                                    </div>
+                                                    <div className={styles.customValueContent}>
+                                                        <span>色相</span>
+                                                        <Slider
+                                                            className={styles.customValueSlider}
+                                                            min={0}
+                                                            max={360}
+                                                            onChange={customHRight => this.handleSliderCustomHRightChange(customHRight)}
+                                                            value={customHRight}
+                                                        />
+                                                        <span>{ customHRight }</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
         							</div>
         						}
         					</div>
